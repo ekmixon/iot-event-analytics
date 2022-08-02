@@ -78,12 +78,12 @@ class IOFeatures:
             # Skip, since cycle check is disabled anyway
             return
 
-        if 'scc' not in self.config or isinstance(self.config['scc'], list) is False:
+        if 'scc' not in self.config or not isinstance(self.config['scc'], list):
             self.config['scc'] = list(args)
             return
 
         # Ensure unique typeFeatures in Array
-        self.config['scc'] = list(set([*self.config['scc'], *args]))
+        self.config['scc'] = list({*self.config['scc'], *args})
 
     def add_output(self, feature, metadata):
         self.output_features.append(OutputFeature(feature, metadata))
@@ -100,7 +100,7 @@ class Talent(IOFeatures):
         self.id = talent_id
         # Unique across all talents
         self.uid = Talent.create_uid(self.id)
-        self.logger = logging.getLogger('Talent.{}'.format(self.uid))
+        self.logger = logging.getLogger(f'Talent.{self.uid}')
         self.config = copy.deepcopy(talent_config)
         if ProtocolGateway.get_adapter_count(protocol_gateway_config) != 1:
             raise Exception('Invalid Talent ProtocolGateway Configuration. Specify a single adapter in your ProtocolGateway configuration')
@@ -126,7 +126,7 @@ class Talent(IOFeatures):
         await self.pg.subscribe_json(f'{Talent.get_talent_topic(self.id)}/{self.chnl}/+', self.__on_common_event)
         await self.pg.subscribe_json_shared(self.id, TALENTS_DISCOVERY_TOPIC, self.__on_discover)
 
-        self.logger.info('Talent {} started successfully'.format(self.uid))
+        self.logger.info(f'Talent {self.uid} started successfully')
 
         while True:
             await asyncio.sleep(1)
@@ -142,7 +142,7 @@ class Talent(IOFeatures):
             raise Exception(f'The function call {func}() timed out')
 
         # Throws an exception if not available
-        self.callees().index('{}.{}'.format(id, func))
+        self.callees().index(f'{id}.{func}')
 
         call_id = str(uuid4())
 
@@ -181,13 +181,10 @@ class Talent(IOFeatures):
     def get_full_feature(self, talent_id, feature, _type=None):
         full_feature = f'{talent_id}.{feature}'
 
-        if _type is None:
-            return full_feature
-
-        return f'{_type}.{full_feature}'
+        return full_feature if _type is None else f'{_type}.{full_feature}'
 
     async def publish_out_events(self, topic, out_events):
-        if isinstance(out_events, list) is False:
+        if not isinstance(out_events, list):
             return
 
         with self.lock:
@@ -222,7 +219,11 @@ class Talent(IOFeatures):
         evtctx = Logger.create_event_context(ev)
 
         if ev['msgType'] == MSG_TYPE_ERROR:
-            self.logger.error('An error occured. Code {}'.format(ev['code']), extra=self.logger.create_extra(evtctx))
+            self.logger.error(
+                f"An error occured. Code {ev['code']}",
+                extra=self.logger.create_extra(evtctx),
+            )
+
             return
 
         out_events = None
@@ -238,7 +239,7 @@ class Talent(IOFeatures):
 
     async def __on_common_event(self, ev, topic, adapter=None):
 
-        self.logger.debug('Received common event {} at topic {}'.format(json.dumps(ev), topic))
+        self.logger.debug(f'Received common event {json.dumps(ev)} at topic {topic}')
 
         suffix_match = re.fullmatch('^.*\\/([^\\/]+)$', topic)
 
@@ -249,14 +250,14 @@ class Talent(IOFeatures):
 
         if call_id not in self.deferred_calls:
             # Talent is not waiting for this response
-            self.logger.debug('Deferred call with id {} could not be found'.format(call_id))
+            self.logger.debug(f'Deferred call with id {call_id} could not be found')
             return
 
         deferred_call = self.deferred_calls[call_id]
 
         del self.deferred_calls[call_id]
 
-        self.logger.debug('Deferred call found with id {}'.format(call_id))
+        self.logger.debug(f'Deferred call found with id {call_id}')
 
         value = json_query_first(ev['value'], ev['value']['$vpath'])['value']
 
@@ -319,22 +320,29 @@ class Talent(IOFeatures):
         if len(self.callees()) == 0:
             return None
 
-        return OrRules([
-            # Ensure, that only the talent with the matching channel will receive the response
-            # Since the full channel id is unique for a talent instance, this rule would fail, if there are multiple instances of a talent because it would only check for one talent here
-            # -> The rule only checks the talent id prefix, which is common for all scaled Talent instances.
-            # pylint: disable=anomalous-backslash-in-string
-            *map(lambda callee: Rule(OpConstraint(f'{callee}-out', OpConstraint.OPS['REGEX'], '^\\/{}\\.[^\\/]+\\/.*'.format(self.id), DEFAULT_TYPE, Constraint.VALUE_TYPE['RAW'], '/$tsuffix')), self.callees())
-        ])
+        return OrRules(
+            [
+                *map(
+                    lambda callee: Rule(
+                        OpConstraint(
+                            f'{callee}-out',
+                            OpConstraint.OPS['REGEX'],
+                            f'^\\/{self.id}\\.[^\\/]+\\/.*',
+                            DEFAULT_TYPE,
+                            Constraint.VALUE_TYPE['RAW'],
+                            '/$tsuffix',
+                        )
+                    ),
+                    self.callees(),
+                )
+            ]
+        )
 
     @staticmethod
     def create_uid(prefix=None):
         unique_part = str(uuid4())[:8]
 
-        if prefix is None:
-            return unique_part
-
-        return f'{prefix}-{unique_part}'
+        return unique_part if prefix is None else f'{prefix}-{unique_part}'
 
     @staticmethod
     def get_talent_topic(talent_id, suffix=''):

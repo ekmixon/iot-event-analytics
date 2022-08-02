@@ -64,10 +64,7 @@ class Verifier:
 
         split = key_id.split('#')
 
-        if len(split) != 2:
-            return 'invalid'
-
-        return split[0]
+        return 'invalid' if len(split) != 2 else split[0]
 
     def sign(self, claims, key):
         jwsa = jws.JWS(payload=json.dumps(claims))

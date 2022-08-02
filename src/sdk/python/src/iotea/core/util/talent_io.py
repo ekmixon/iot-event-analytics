@@ -19,10 +19,7 @@ class TalentIO:
 
     @staticmethod
     def ensure_model(model):
-        if isinstance(model, TalentIO):
-            return model
-
-        return JsonModel(model)
+        return model if isinstance(model, TalentIO) else JsonModel(model)
 
 class TalentInput:
     def __init__(self):
@@ -44,7 +41,14 @@ class TalentInput:
         if _type is None:
             _type = ev['type']
 
-        return list(filter(lambda instance: instance[0] != '$', TalentIO.ensure_model(ev).get('$features.{}.\'{}\''.format(_type, feature)).keys()))
+        return list(
+            filter(
+                lambda instance: instance[0] != '$',
+                TalentIO.ensure_model(ev)
+                .get(f"$features.{_type}.\'{feature}\'")
+                .keys(),
+            )
+        )
 
     @staticmethod
     def get_stats(ev, feature=None, _type=None, instance=None):
@@ -59,10 +63,13 @@ class TalentInput:
 
         model = TalentIO.ensure_model(ev)
 
-        _feature = model.get("$features.{}.'{}'.{}.$feature".format(_type, feature, instance))
+        _feature = model.get(f"$features.{_type}.'{feature}'.{instance}.$feature")
 
         if 'stat' not in _feature:
-            raise Exception('No statistical information available for {}.{}. It\'s only available for encoded features.'.format(_type, feature))
+            raise Exception(
+                f"No statistical information available for {_type}.{feature}. It\'s only available for encoded features."
+            )
+
 
         return _feature['stat']
 
@@ -74,7 +81,9 @@ class TalentInput:
         if _type is None:
             _type = ev['type']
 
-        return TalentIO.ensure_model(ev).get("$features.{}.'{}'.$metadata".format(_type, feature))
+        return TalentIO.ensure_model(ev).get(
+            f"$features.{_type}.'{feature}'.$metadata"
+        )
 
     @staticmethod
     def __get_value(ev, value_type, feature=None, _type=DEFAULT_TYPE, instance=DEFAULT_INSTANCE, max_value_count=1, include_timestamp=False):
@@ -92,13 +101,13 @@ class TalentInput:
 
         model = TalentIO.ensure_model(ev)
 
-        _feature = model.get('$features.{}.\'{}\'.{}.$feature'.format(_type, feature, instance))
+        _feature = model.get(f"$features.{_type}.\'{feature}\'.{instance}.$feature")
 
         field_name = 'enc' if value_type == VALUE_TYPE_ENCODED else 'raw'
 
         values = []
 
-        for i in range(0, max_value_count):
+        for i in range(max_value_count):
             if i == 0:
                 values.append(TalentInput.__resolve_value(_feature, field_name, include_timestamp))
 
@@ -160,11 +169,7 @@ class TalentOutput:
         if timestamp is None:
             timestamp = round(time.time() * 1000)
 
-        talent_id = None
-
-        if talent is not None:
-            talent_id = talent.id
-
+        talent_id = talent.id if talent is not None else None
         if subject is None:
             subject = ev['subject']
 

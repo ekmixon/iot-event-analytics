@@ -54,7 +54,10 @@ class RandomReducer(Reducer):
         super().__init__('reducer', 'mapper', connection_string)
 
     async def reduce(self, data):
-        reduced_result = reduce(lambda a, b: a + (b if (isinstance(b, int) or isinstance(b, float)) else 0), data, 0)
+        reduced_result = reduce(
+            lambda a, b: a + (b if isinstance(b, (int, float)) else 0), data, 0
+        )
+
         self.logger.info(f'Reducer calculated sum {reduced_result}')
 
 async def main():

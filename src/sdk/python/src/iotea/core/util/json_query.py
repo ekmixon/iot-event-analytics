@@ -37,7 +37,7 @@ def __create_regex():
 def __mask_key(field_name):
     try:
         field_name.index('.')
-        return "'{}'".format(field_name)
+        return f"'{field_name}'"
     except:
         return field_name
 
@@ -46,7 +46,7 @@ def __wrap_index(idx, arr):
         idx += len(arr)
 
     if idx < 0 or idx > len(arr):
-        raise Exception('Index {} is out of bounds'.format(idx))
+        raise Exception(f'Index {idx} is out of bounds')
 
     return idx
 
@@ -60,7 +60,7 @@ def __parse_int(value, default_value=None, radix=10):
         try:
             return int(default_value)
         except:
-            raise Exception('Neither parsed value {} nor default value are numbers'.format(value))
+            raise Exception(f'Neither parsed value {value} nor default value are numbers')
 
 def __int_range(start, end):
     rng = []
@@ -105,10 +105,8 @@ def json_query(value, query='', options=None, match_index=0, normalized_query=''
     if matches is None:
         matches = re.findall(__create_regex(), query)
 
-    if parent is None and field is None:
-        # Initialize $cnt on first function call
-        if '$cnt' not in options:
-            options['$cnt'] = 0
+    if parent is None and field is None and '$cnt' not in options:
+        options['$cnt'] = 0
 
     if options['limit'] > 0 and options['$cnt'] >= options['limit']:
         return result
@@ -131,9 +129,9 @@ def json_query(value, query='', options=None, match_index=0, normalized_query=''
                 return result
 
             if field_match not in value:
-                raise Exception('Path {} does not exist'.format(field_match))
+                raise Exception(f'Path {field_match} does not exist')
 
-            normalized_query = '{}.{}'.format(normalized_query, __mask_key(field_match))
+            normalized_query = f'{normalized_query}.{__mask_key(field_match)}'
             parent = value
             field = field_match
             value = value[field_match]
@@ -167,7 +165,18 @@ def json_query(value, query='', options=None, match_index=0, normalized_query=''
             return result
 
         for idx in __int_range(start_range, end_range):
-            json_query(value[idx], query, options, i + 1, '{}[{}]'.format(normalized_query, idx), value, idx, matches, result)
+            json_query(
+                value[idx],
+                query,
+                options,
+                i + 1,
+                f'{normalized_query}[{idx}]',
+                value,
+                idx,
+                matches,
+                result,
+            )
+
 
         return result
 
@@ -185,11 +194,14 @@ def json_query(value, query='', options=None, match_index=0, normalized_query=''
     # Increment iteration counter
     options['$cnt'] += 1
 
-    result.append({
-        'value': value,
-        'label': label,
-        'query': '{}{}'.format(normalized_query, ':{}'.format(label) if label is not None else '')
-    })
+    result.append(
+        {
+            'value': value,
+            'label': label,
+            'query': f"{normalized_query}{f':{label}' if label is not None else ''}",
+        }
+    )
+
 
     return result
 
@@ -203,7 +215,7 @@ def json_query_first(data, query, options=None):
     for result in json_query(data, query, options):
         return result
 
-    raise Exception('No match found for query {}'.format(query))
+    raise Exception(f'No match found for query {query}')
 
 def json_query_update_first(data, query, value):
     json_query_first(data, query, {

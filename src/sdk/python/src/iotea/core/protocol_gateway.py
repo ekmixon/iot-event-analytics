@@ -51,13 +51,18 @@ class ProtocolGateway:
         self.__validate_platform_protocol_usage(publish_to_platform_protocol_only)
 
         for adapter in self.adapters:
-            if publish_to_platform_protocol_only is False or adapter.is_platform_protocol:
-                if publish_options.adapter_id is None or publish_options.adapter_id == adapter.id:
-                    coro = adapter.instance.publish(topic, message, publish_options)
-                    if force_wait:
-                        await coro
-                    else:
-                        asyncio.get_event_loop().create_task(coro)
+            if (
+                publish_to_platform_protocol_only is False
+                or adapter.is_platform_protocol
+            ) and (
+                publish_options.adapter_id is None
+                or publish_options.adapter_id == adapter.id
+            ):
+                coro = adapter.instance.publish(topic, message, publish_options)
+                if force_wait:
+                    await coro
+                else:
+                    asyncio.get_event_loop().create_task(coro)
 
     def publish_json(self, topic, json_o, publish_options=None, force_wait=False):
         return self.publish(topic, json.dumps(json_o, separators=(',', ':')), publish_options, force_wait)
@@ -88,26 +93,31 @@ class ProtocolGateway:
         self.__validate_platform_protocol_usage(subscribe_to_platform_protocol_only)
 
         for adapter in self.adapters:
-            if subscribe_to_platform_protocol_only is False or adapter.is_platform_protocol:
-                if subscribe_options.adapter_id is None or subscribe_options.adapter_id == adapter.id:
-                    if asyncio.iscoroutinefunction(callback):
-                        async def callback_wrapper(ev, _topic, adapter_id=adapter.id):
-                            await callback(ev, _topic, adapter_id)
+            if (
+                subscribe_to_platform_protocol_only is False
+                or adapter.is_platform_protocol
+            ) and (
+                subscribe_options.adapter_id is None
+                or subscribe_options.adapter_id == adapter.id
+            ):
+                if asyncio.iscoroutinefunction(callback):
+                    async def callback_wrapper(ev, _topic, adapter_id=adapter.id):
+                        await callback(ev, _topic, adapter_id)
 
-                        cb = callback_wrapper
-                    else:
-                        def callback_wrapper(ev, _topic, adapter_id=adapter.id):
-                            callback(ev, _topic, adapter_id)
+                    cb = callback_wrapper
+                else:
+                    def callback_wrapper(ev, _topic, adapter_id=adapter.id):
+                        callback(ev, _topic, adapter_id)
 
-                        cb = callback_wrapper
-                    if group is None:
-                        coro = adapter.instance.subscribe(topic, cb, subscribe_options)
-                    else:
-                        coro = adapter.instance.subscribe_shared(group, topic, cb, subscribe_options)
-                    if force_wait:
-                        await coro
-                    else:
-                        asyncio.get_event_loop().create_task(coro)
+                    cb = callback_wrapper
+                if group is None:
+                    coro = adapter.instance.subscribe(topic, cb, subscribe_options)
+                else:
+                    coro = adapter.instance.subscribe_shared(group, topic, cb, subscribe_options)
+                if force_wait:
+                    await coro
+                else:
+                    asyncio.get_event_loop().create_task(coro)
 
 
     def __json_parse_wrapper(self, callback):
@@ -165,10 +175,10 @@ class ProtocolGateway:
     @staticmethod
     def has_platform_adapter(protocol_gateway_config):
         ProtocolGateway.validate_configuration(protocol_gateway_config)
-        for adapter in protocol_gateway_config['adapters']:
-            if JsonModel(adapter).get('platform', False):
-                return True
-        return False
+        return any(
+            JsonModel(adapter).get('platform', False)
+            for adapter in protocol_gateway_config['adapters']
+        )
 
     @staticmethod
     def get_adapter_count(protocol_gateway_config):

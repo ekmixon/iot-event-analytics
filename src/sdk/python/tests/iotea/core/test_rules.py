@@ -22,16 +22,17 @@ def rules():
     opc1 = create_op_constraint('feat2', OpConstraint.OPS['GREATER_THAN'], 10, 'anytype1', Constraint.VALUE_TYPE['ENCODED'], '/foo', Constraint.ALL_INSTANCE_IDS_FILTER, True)
     opc2 = create_op_constraint('*', OpConstraint.OPS['ISSET'], None, 'anytype2', Constraint.VALUE_TYPE['RAW'], Constraint.PATH_IDENTITY, '^test$', False)
 
-    rules = AndRules([
-        Rule(create_change_constraint('feat1', 'anytype1', Constraint.VALUE_TYPE['RAW'])),
-        OrRules([
-            Rule(opc1),
-            Rule(opc2)
-        ])
-    ], [
-        'anytype.feat3'
-    ])
-    yield rules
+    yield AndRules(
+        [
+            Rule(
+                create_change_constraint(
+                    'feat1', 'anytype1', Constraint.VALUE_TYPE['RAW']
+                )
+            ),
+            OrRules([Rule(opc1), Rule(opc2)]),
+        ],
+        ['anytype.feat3'],
+    )
     # Teardown logic
 
 class TestRules:

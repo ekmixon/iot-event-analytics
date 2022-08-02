@@ -102,4 +102,4 @@ class Logger(logging.Logger):
                 None
             ))
         except:
-            raise Exception('Received invalid loglevel string {}'.format(level_string))
+            raise Exception(f'Received invalid loglevel string {level_string}')

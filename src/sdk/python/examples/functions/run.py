@@ -53,8 +53,7 @@ class MathFunctions(FunctionTalent):
             # result = await self.call('math', 'sum', [ev['value']], ev['subject'], ev['returnTopic'], 60000)
             # result = await self.call(self.id, 'multiply', [ev['value'], ev['value']], ev['subject'], ev['returnTopic'], 60000)
 
-            self.logger.info('Result is {}'.format(result), extra=self.logger.create_extra(evtctx))
-        # pylint: disable=broad-except
+            self.logger.info(f'Result is {result}', extra=self.logger.create_extra(evtctx))
         except Exception as err:
             self.logger.error('An error occurred while calling a function', extra=self.logger.create_extra(evtctx))
             self.logger.error(err)

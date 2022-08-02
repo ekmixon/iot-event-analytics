@@ -223,9 +223,7 @@ class TestRunnerTalent(Talent):
         return result
 
     async def on_event(self, ev, evtctx):
-        unmet_dependencies = self.dependencies.check_all()
-
-        if unmet_dependencies:
+        if unmet_dependencies := self.dependencies.check_all():
             self.logger.error("Can't start tests because of not connected "
                               'TestSetTalent(s): %s', unmet_dependencies)
             return
@@ -281,9 +279,7 @@ class TestSetTalent(FunctionTalent):
         return TestResult(test_name, actual, duration).to_dict()
 
     async def prepare(self, ev, evtctx, timeout_at_ms):
-        unmet_dependencies = self.talent_dependencies.check_all()
-
-        if unmet_dependencies:
+        if unmet_dependencies := self.talent_dependencies.check_all():
             self.logger.error('Prepare test set failed because not connected '
                               'TestSetTalent(s): %s', unmet_dependencies)
             return False

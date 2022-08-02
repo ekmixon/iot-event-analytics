@@ -52,7 +52,7 @@ class TestJsonQuery:
         results2 = json_query(json)
 
         assert len(results) == 1
-        assert results[0]['label'] == None
+        assert results[0]['label'] is None
         assert results[0]['query'] == ''
         test_case.assertDictEqual(results[0]['value'], json)
         test_case.assertDictEqual(results[0], results2[0])

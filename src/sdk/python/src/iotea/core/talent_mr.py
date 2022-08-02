@@ -63,7 +63,11 @@ class Mapper(Talent):
         # pylint: disable=assignment-from-no-return
         trigger_rules = self.get_trigger_rules()
 
-        if isinstance(trigger_rules, OrRules) is False and isinstance(trigger_rules, AndRules) is False and isinstance(trigger_rules, Rule) is False:
+        if (
+            not isinstance(trigger_rules, OrRules)
+            and not isinstance(trigger_rules, AndRules)
+            and not isinstance(trigger_rules, Rule)
+        ):
             raise Exception('get_trigger_rules() has to be an instance either of OrRules or AndRules or Rule')
 
         return OrRules([AndRules(rules), trigger_rules])
@@ -72,7 +76,10 @@ class Mapper(Talent):
         raise Exception('Override map(ev) and return an array. Each array entry will be sent to a worker.')
 
     async def on_event(self, ev, evtctx):
-        if (ev['feature'] == self.__get_map_start_feature() or ev['feature'] == self.__get_reduce_end_feature()):
+        if ev['feature'] in [
+            self.__get_map_start_feature(),
+            self.__get_reduce_end_feature(),
+        ]:
             # These events should not trigger any calculation process
             return
 
@@ -93,7 +100,11 @@ class Mapper(Talent):
 
         work_packages = await self.map(ev)
 
-        self.logger.info(('Mapper {} distributes work at {}. Work packages {}'.format(self.id, ev['whenMs'], json.dumps(work_packages))), extra=self.logger.create_extra(evtctx))
+        self.logger.info(
+            f"Mapper {self.id} distributes work at {ev['whenMs']}. Work packages {json.dumps(work_packages)}",
+            extra=self.logger.create_extra(evtctx),
+        )
+
 
         partial_results = [None for _ in range(len(work_packages))]
 
@@ -152,7 +163,11 @@ class Worker(Talent):
         partial_index = data['idx']
         work_package = data['value']
 
-        self.logger.debug('Worker calculates value for index {} with data {}'.format(partial_index, json.dumps(work_package)), extra=self.logger.create_extra(evtctx))
+        self.logger.debug(
+            f'Worker calculates value for index {partial_index} with data {json.dumps(work_package)}',
+            extra=self.logger.create_extra(evtctx),
+        )
+
 
         try:
             partial_result = await self.work(work_package)

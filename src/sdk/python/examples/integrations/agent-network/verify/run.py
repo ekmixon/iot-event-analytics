@@ -38,22 +38,19 @@ class VerifyTalent(FunctionTalent):
         if jwk_raw and jwk_raw != '':
             try:
                 self.key = jwk.JWK.from_json(jwk_raw)
-                self.logger.info('Successfully stored Key from JWK: {}'.format(self.key))
-            # pylint: disable=broad-except
+                self.logger.info(f'Successfully stored Key from JWK: {self.key}')
             except Exception as ex:
-                self.logger.error('Could not import JWK: {}'.format(ex))
+                self.logger.error(f'Could not import JWK: {ex}')
 
     # pylint: disable=unused-argument
     def __verify(self, payload, ev, evtctx, timeout_at_ms):
-        self.logger.info('Received verification request for value {}'.format(payload))
+        self.logger.info(f'Received verification request for value {payload}')
         result = self.verifier.verify(payload)
 
-        # If error message
-        if isinstance(result, str):
-            self.logger.error('Verify failed: {}'.format(result))
-            return result
-        else:
+        if not isinstance(result, str):
             return self.verifier.verify(payload).decode('utf-8')
+        self.logger.error(f'Verify failed: {result}')
+        return result
 
     # pylint: disable=unused-argument
     async def __sign(self, payload, ev, evtctx, timeout_at_ms):

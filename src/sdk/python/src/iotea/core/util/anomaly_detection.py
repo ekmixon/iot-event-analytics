@@ -111,13 +111,12 @@ class MultivariateSeriesProbabilisticGaussianProcess(IoTeaAnomalyDetection):
 
     def predict(self, Features):
         if not self.model:
-            if os.path.isfile(self.name) :
-                # Restore the weights
-                with open(self.name, 'rb') as f:
-                    self.model = pickle.load(f)
-            else:
+            if not os.path.isfile(self.name):
                 raise Exception("Model not learned")
 
+            # Restore the weights
+            with open(self.name, 'rb') as f:
+                self.model = pickle.load(f)
         return self.model.predict(Features,return_cov = True)
 
     def checkAnomaly(self, Features, Targets):
@@ -145,9 +144,11 @@ class MultivariateSeriesProbabilisticGaussianProcess(IoTeaAnomalyDetection):
 
 class BinningMultivariateSeriesProbabilisticGaussianProcess(IoTeaAnomalyDetection):
     def __init__(self, name = 'binning', bins = 2):
-        self.learner = []
-        for i in range(0,bins):
-            self.learner.append( MultivariateSeriesProbabilisticGaussianProcess(name= name+str(i)) )
+        self.learner = [
+            MultivariateSeriesProbabilisticGaussianProcess(name=name + str(i))
+            for i in range(bins)
+        ]
+
         self.bins = bins
         self.name = name
 
@@ -156,7 +157,7 @@ class BinningMultivariateSeriesProbabilisticGaussianProcess(IoTeaAnomalyDetectio
         _len = len(self.learndata[0])
         _binlenght = int(_len/ self.bins)
         self.learndata = np.array(self.learndata).reshape(2,len(Features))
-        for i in range(0,self.bins):
+        for i in range(self.bins):
             _xtmp = self.learndata[0,(i*_binlenght):( (i+1)*_binlenght )]
             _ytmp = self.learndata[1,(i*_binlenght):( (i+1)*_binlenght )]
             self.learner[i].learn( np.array(_xtmp).reshape(-1, 1)  , np.array(_ytmp).reshape(-1, 1) )
@@ -221,8 +222,6 @@ class MultivariateSeriesSpectralAutoencoder(IoTeaAnomalyDetection):
         raise Exception("Scoring not supported")
 
     def learn(self, Features, Targets = None):
-        num_batches = 5
-
         if Targets is not None:
             raise Exception("Per definition Target is equal to Features")
 
@@ -252,6 +251,8 @@ class MultivariateSeriesSpectralAutoencoder(IoTeaAnomalyDetection):
             model.load_weights(self.name)
         else:
             checkpointer = ModelCheckpoint(filepath=self.name,verbose=0, save_best_only=True)
+            num_batches = 5
+
             # Autoencoders learn the identiy, due to that X = X
             model.fit(Features, Features, epochs=100, batch_size=num_batches, verbose=1,callbacks=[checkpointer])
 
@@ -313,10 +314,7 @@ class MultivariateSeriesDistanceCenterOfMass(IoTeaAnomalyDetection):
         else:
             _rst = []
             for i in range(len(Features)):
-                if i == 0:
-                    _rst = Features[0]
-                else:
-                    _rst = _rst + Features[i]
+                _rst = Features[0] if i == 0 else _rst + Features[i]
             _cof  = _rst / len(Features)
             with open(self.name,'wb') as f:
                 pickle.dump(_cof,f)
@@ -586,10 +584,7 @@ class MultivariateSeriesSpectralVarinationalAutoencoder(IoTeaAnomalyDetection):
 
         input_layer = Input( shape=self.encoding_dim )
 
-        prior_sigma = []
-        for i in range(Features.shape[1]):
-            prior_sigma.append(np.array(Features)[0][i])
-
+        prior_sigma = [np.array(Features)[0][i] for i in range(Features.shape[1])]
         for i in range(Features.shape[0]):
             for j in range(Features.shape[1]):
                 prior_sigma[j] = tf.float64.as_numpy_dtype( np.array(Features)[i][j] - ( (prior_sigma[j] + np.array(Features)[i][j])/2 ) )

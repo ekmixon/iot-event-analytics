@@ -56,19 +56,21 @@ class MqttProtocolAdapter:
 
     @staticmethod
     def create_default_configuration(is_platform_protocol=False, broker_url='mqtt://localhost:1883'):
-        config = {"platform": is_platform_protocol,
-                  "module": {"name": ".util.mqtt_client", "class": "MqttProtocolAdapter"},
-                  "config": {"brokerUrl": broker_url, "topicNamespace": "iotea/"}}
-        return config
+        return {
+            "platform": is_platform_protocol,
+            "module": {
+                "name": ".util.mqtt_client",
+                "class": "MqttProtocolAdapter",
+            },
+            "config": {"brokerUrl": broker_url, "topicNamespace": "iotea/"},
+        }
 
     def __prefix_topic_ns(self, topic):
         return MqttClient.prefix_topic_ns(topic, self.topic_ns)
 
     def __strip_topic_namespace(self, topic):
         topic_ns_index = topic.find(self.topic_ns)
-        if topic_ns_index != 0:
-            return topic
-        return topic[len(self.topic_ns):]
+        return topic if topic_ns_index != 0 else topic[len(self.topic_ns):]
 
     def __strip_namespace_wrapper(self, callback):
         if asyncio.iscoroutinefunction(callback):
@@ -132,14 +134,16 @@ class MqttClient:
         self.is_mqtt5_compatible = False
         self.topic_ns = None
 
-        if topic_ns is not None:
-            if re.fullmatch(r'^[\/\w]+\/$', topic_ns) is not None:
-                self.topic_ns = topic_ns
-                self.logger.info('*****INFO***** Using topic namespace {}'.format(self.topic_ns))
-            else:
-                raise Exception('Given topic namespace {} is invalid. It has to have a trailing slash'.format(topic_ns))
-        else:
+        if topic_ns is None:
             self.logger.warning('*****WARNING***** No topic namespace given. Tip: Also check all topics of your subscriptions and publications')
+
+        elif re.fullmatch(r'^[\/\w]+\/$', topic_ns) is not None:
+            self.topic_ns = topic_ns
+            self.logger.info(f'*****INFO***** Using topic namespace {self.topic_ns}')
+        else:
+            raise Exception(
+                f'Given topic namespace {topic_ns} is invalid. It has to have a trailing slash'
+            )
 
     async def get_client_async(self):
         if self.client_initialized:
@@ -167,14 +171,14 @@ class MqttClient:
 
         client = await self.get_client_async()
 
-        if isinstance(topics, list) is False:
+        if not isinstance(topics, list):
             topics = [topics]
 
         options = {**{'qos': QOS_0, 'retain': options.get('retain', False)}, **options}
 
         for topic in topics:
             prefixed_topic = self.__prefix_topic_ns(topic)
-            self.logger.debug('Sending {} to {}'.format(message, prefixed_topic))
+            self.logger.debug(f'Sending {message} to {prefixed_topic}')
             await client.publish(prefixed_topic, message.encode(MQTT_MESSAGE_ENCODING), qos=options['qos'], retain=options['retain'])
 
     async def subscribe_json(self, topic, callback):
@@ -193,7 +197,7 @@ class MqttClient:
 
         await client.subscribe([(topic, qos)])
 
-        self.logger.debug('Successfully subscribed to topic {}'.format(topic))
+        self.logger.debug(f'Successfully subscribed to topic {topic}')
 
         return subscription
 
@@ -209,7 +213,7 @@ class MqttClient:
 
     @staticmethod
     def create_client_id(prefix):
-        return '{}-{}'.format(prefix, str(uuid4())[:8])
+        return f'{prefix}-{str(uuid4())[:8]}'
 
     async def __init(self, broker_url):
         # Connecting
@@ -256,38 +260,49 @@ class MqttClient:
             if subscription.should_unsubscribe:
                 continue
 
-            self.logger.debug('Resubscribing to {}'.format(subscription.topic))
+            self.logger.debug(f'Resubscribing to {subscription.topic}')
             await self.client.subscribe([(subscription.topic, subscription.qos)])
 
     async def __mqtt5_probe(self, client, timeout_ms):
         self.logger.debug('Start MQTT5 Probing...')
 
-        probe_uuid = str(uuid4())[0:8]
+        probe_uuid = str(uuid4())[:8]
 
-        publish_to = 'probe/{}'.format(probe_uuid)
-        subscribe_to = self.__prefix_topic_ns('$share/{}/{}'.format(str(uuid4())[0:8], publish_to))
+        publish_to = f'probe/{probe_uuid}'
+        subscribe_to = self.__prefix_topic_ns(
+            f'$share/{str(uuid4())[:8]}/{publish_to}'
+        )
+
         # Prefix the publish to topic
         publish_to = self.__prefix_topic_ns(publish_to)
 
         probe_subscription = ProbeSubscription(subscribe_to)
         self.subscriptions.append(probe_subscription)
 
-        self.logger.debug('Probe subscription is {}'.format(subscribe_to))
+        self.logger.debug(f'Probe subscription is {subscribe_to}')
 
         await client.subscribe([
             (subscribe_to, QOS_0)
         ])
 
-        self.logger.debug('Publishing probe to {}'.format(publish_to))
+        self.logger.debug(f'Publishing probe to {publish_to}')
 
-        await client.publish(publish_to, 'probe-{}'.format(probe_uuid).encode(MQTT_MESSAGE_ENCODING), qos=QOS_0)
+        await client.publish(
+            publish_to,
+            f'probe-{probe_uuid}'.encode(MQTT_MESSAGE_ENCODING),
+            qos=QOS_0,
+        )
+
 
         timeout_at_ms = time.time() * ONE_SECOND_MS + timeout_ms
 
         try:
             while probe_subscription.received_response is False:
                 if time.time() * ONE_SECOND_MS > timeout_at_ms:
-                    raise Exception('Probe on topic {} was not received on topic {}. An MQTT5 compilant broker is required'.format(publish_to, subscribe_to))
+                    raise Exception(
+                        f'Probe on topic {publish_to} was not received on topic {subscribe_to}. An MQTT5 compilant broker is required'
+                    )
+
 
                 await asyncio.sleep(0.1)
         finally:
@@ -319,14 +334,14 @@ class MqttClient:
                 await asyncio.sleep(1)
 
     def __validate_json(self, json_=None):
-        if json_ is not None and (isinstance(json_, dict) or isinstance(json_, list)):
+        if json_ is not None and isinstance(json_, (dict, list)):
             return
 
         raise Exception('Given JSON document is neither a dictionary nor a list')
 
 class NamedMqttClient(MqttClient):
     def __init__(self, name, broker_url, topic_ns=os.environ.get('MQTT_TOPIC_NS', None), check_mqtt5_compatibility=True):
-        client_id = MqttClient.create_client_id('{}.MqttClient'.format(name))
+        client_id = MqttClient.create_client_id(f'{name}.MqttClient')
         super().__init__(broker_url, topic_ns, check_mqtt5_compatibility, logging.getLogger(client_id), client_id)
 
 class Subscription:
@@ -384,7 +399,7 @@ class Subscription:
                 callback(decoded_message, message.topic)
 
     def __validate_json(self, json_=None):
-        if json_ is not None and (isinstance(json_, dict) or isinstance(json_, list)):
+        if json_ is not None and isinstance(json_, (dict, list)):
             return
 
         raise Exception('Given JSON document is neither a dictionary nor a list')

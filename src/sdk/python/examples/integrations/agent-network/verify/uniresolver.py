@@ -42,7 +42,7 @@ class ClientWebResolver:
         keys = doc['didDocument']['publicKey']
 
         for key_entry in keys:
-            if (key_entry['id'] == key_id) or (key_entry['id'] == didkey):
+            if key_entry['id'] in [key_id, didkey]:
                 key = key_entry['publicKeyJwk']
 
                 self._lookup[didkey] = key

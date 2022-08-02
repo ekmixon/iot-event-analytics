@@ -166,9 +166,9 @@ class FunctionTalent(Talent):
 
         args = [*raw_value['args'], ev, evtctx, raw_value['timeoutAtMs']]
 
-        feature = '{}-out'.format(raw_value['func'])
+        feature = f"{raw_value['func']}-out"
 
-        tsuffix = '/{}/{}'.format(raw_value['chnl'], raw_value['call'])
+        tsuffix = f"/{raw_value['chnl']}/{raw_value['call']}"
 
         result_event = None
 

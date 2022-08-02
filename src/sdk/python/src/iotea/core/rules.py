@@ -26,7 +26,10 @@ class Constraint:
         self.limit_feature_selection = limit_feature_selection
 
         if self.limit_feature_selection is False and self.feature != Constraint.ANY_FEATURE:
-            Constraint.logger.warning('The flag limit_feature_selection=False has only an effect if feature is set to constant ANY_FEATURE. Currently the feature is set to "{}"'.format(self.feature))
+            Constraint.logger.warning(
+                f'The flag limit_feature_selection=False has only an effect if feature is set to constant ANY_FEATURE. Currently the feature is set to "{self.feature}"'
+            )
+
 
         self.segment = None
 
@@ -59,7 +62,7 @@ class Constraint:
             if value_type == _value_type:
                 return key
 
-        raise Exception('Value type not found for key {}'.format(value_type))
+        raise Exception(f'Value type not found for key {value_type}')
 
 Constraint.OPS = {
     'SCHEMA': 0,
@@ -185,7 +188,7 @@ class OpConstraint(SchemaConstraint):
                 'pattern': value
             }
 
-        raise Exception('Invalid operation {} given'.format(op))
+        raise Exception(f'Invalid operation {op} given')
 
 
 OpConstraint.OPS = {

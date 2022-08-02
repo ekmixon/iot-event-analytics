@@ -11,8 +11,7 @@
 from src.iotea.core.rules import ChangeConstraint, OpConstraint
 
 def create_change_constraint(*args):
-    oc = ChangeConstraint(*args)
-    return oc
+    return ChangeConstraint(*args)
 
 def create_op_constraint(*args):
     oc = OpConstraint(*args)

@@ -70,9 +70,9 @@ class ChargingStationTalent(Talent):
             2000
         )
 
-        self.logger.info('GetCredential result {}'.format(credential))
+        self.logger.info(f'GetCredential result {credential}')
 
-        self.logger.info('Call Verify {}'.format(credential))
+        self.logger.info(f'Call Verify {credential}')
 
         verification_result = await self.call(
             'VerifyTalent',
@@ -85,10 +85,10 @@ class ChargingStationTalent(Talent):
             10000
         )
 
-        self.logger.info('Verification result {}'.format(verification_result))
+        self.logger.info(f'Verification result {verification_result}')
         certified_credential = json.loads(verification_result)
 
-        self.logger.info('Certified credential {}'.format(certified_credential))
+        self.logger.info(f'Certified credential {certified_credential}')
 
         max_charging = certified_credential['credentialSubject']['vehicle']['maxcharging']['rate']
         vin = certified_credential['credentialSubject']['vehicle']['vin']
@@ -98,7 +98,7 @@ class ChargingStationTalent(Talent):
             'centsPerKWh' : COST_PER_KHW_CENTS
         }
 
-        self.logger.info('Call postOfferAccept with {}'.format(charge_features))
+        self.logger.info(f'Call postOfferAccept with {charge_features}')
 
         result = await self.call(
             'ChargeAPI',
@@ -115,20 +115,19 @@ class ChargingStationTalent(Talent):
             self.logger.info('Offer was not accepted')
             return
 
-        self.logger.info('Call postTransactionEnd for Vin {}'.format(vin))
+        self.logger.info(f'Call postTransactionEnd for Vin {vin}')
 
         result = await self.call('ChargeAPI', 'postTransactionEnd', [session_id, True], ev['subject'], ev['returnTopic'], MAX_TRANSACTION_STEP_DELAY)
 
-        self.logger.info('Result: {}'.format(result))
+        self.logger.info(f'Result: {result}')
 
     async def on_event(self, ev, evtctx):
         self.logger.info('Event arrived...')
 
         try:
             await self.charge_transaction(ev, evtctx)
-        # pylint: disable=broad-except
         except Exception as err:
-            self.logger.warning('Transaction failed. Error: {}'.format(err))
+            self.logger.warning(f'Transaction failed. Error: {err}')
 
 async def main():
     mqtt_config = MqttProtocolAdapter.create_default_configuration()
