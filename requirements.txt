@@ -6,7 +6,7 @@ passlib==1.7.4
 PyYAML==5.4
 six==1.15.0
 transitions==0.8.6
-websockets==8.1
+websockets==10.0
 pytest==6.2.3
 pytest-cov==2.11.1
 pytest-mock==3.6.0
