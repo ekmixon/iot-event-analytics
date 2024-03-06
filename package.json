@@ -19,7 +19,7 @@
     "cors": "^2.8.5",
     "debug": "^4.1.1",
     "express": "^4.17.1",
-    "jsonata": "^1.8.3",
+    "jsonata": "^1.8.7",
     "mqtt": "^4.2.1",
     "openapi-types": "7.0.1",
     "reconnecting-websocket": "4.4.0",
