@@ -1,3 +1,4 @@
 jwcrypto==0.8
 requests>=2.20.0
 cryptography>=3.3.2
+urllib3>=2.2.2 # not directly required, pinned by Snyk to avoid a vulnerability
